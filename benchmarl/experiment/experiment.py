@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib
+
 import os
 import time
 from collections import OrderedDict
@@ -536,7 +537,6 @@ class Experiment(CallbackNotifier):
                 step=self.n_iters_performed,
             )
             pbar.set_description(f"mean return = {self.mean_return}", refresh=False)
-            pbar.update()
 
             # Callback
             self.on_batch_collected(batch)
@@ -562,7 +562,7 @@ class Experiment(CallbackNotifier):
                 )
 
                 # Callback
-                self.on_train_end(training_td)
+                self.on_train_end(training_td, group)
 
                 # Exploration update
                 if isinstance(self.group_policies[group], TensorDictSequential):
@@ -608,6 +608,7 @@ class Experiment(CallbackNotifier):
                 and self.total_frames % self.config.checkpoint_interval == 0
             ):
                 self._save_experiment()
+            pbar.update()
             sampling_start = time.time()
 
         self.close()
@@ -639,6 +640,7 @@ class Experiment(CallbackNotifier):
                 loss_value.backward()
 
                 grad_norm = self._grad_clip(optimizer)
+
                 training_td.set(
                     f"grad_norm_{loss_name}",
                     torch.tensor(grad_norm, device=self.config.train_device),
@@ -649,6 +651,11 @@ class Experiment(CallbackNotifier):
         self.replay_buffers[group].update_tensordict_priority(subdata)
         if self.target_updaters[group] is not None:
             self.target_updaters[group].step()
+
+        callback_loss = self.on_train_step(subdata, group)
+        if callback_loss is not None:
+            training_td.update(callback_loss)
+
         return training_td
 
     def _grad_clip(self, optimizer: torch.optim.Optimizer) -> float:
@@ -673,10 +680,9 @@ class Experiment(CallbackNotifier):
                 video_frames = []
 
                 def callback(env, td):
-                    try:
-                        video_frames.append(env.render(mode="rgb_array"))
-                    except TypeError:
-                        video_frames.append(env.render())
+                    video_frames.append(
+                        self.task.__class__.render_callback(self, env, td)
+                    )
 
             else:
                 video_frames = None

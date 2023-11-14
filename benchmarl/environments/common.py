@@ -249,6 +249,13 @@ class Task(Enum):
         return []
 
 
+    @staticmethod
+    def render_callback(experiment, env: EnvBase, data: TensorDictBase):
+        try:
+            return env.render(mode="rgb_array")
+        except TypeError:
+            return env.render()
+
     def __repr__(self):
         cls_name = self.__class__.__name__
         return f"{cls_name}.{self.name}: (config={self.config})"

@@ -390,7 +390,7 @@ class Experiment(CallbackNotifier):
         self.group_map = self.task.group_map(test_env)
         self.max_steps = self.task.max_steps(test_env)
 
-        transforms = [self.task.get_reward_sum_transform(test_env)]
+        transforms = [self.task.get_reward_sum_transform(test_env)] + self.task.custom_transforms(test_env)
         transform = Compose(*transforms)
 
         if test_env.batch_size == ():
@@ -401,7 +401,7 @@ class Experiment(CallbackNotifier):
         else:
             self.env_func = lambda: TransformedEnv(env_func(), transform.clone())
 
-        self.test_env = test_env.to(self.config.sampling_device)
+        self.test_env = TransformedEnv(test_env.to(self.config.sampling_device), transform.clone())
 
     def _setup_algorithm(self):
         self.algorithm = self.algorithm_config.get_algorithm(experiment=self)
@@ -500,6 +500,7 @@ class Experiment(CallbackNotifier):
             task_config=self.task.config,
             continuous_actions=self.continuous_actions,
             on_policy=self.on_policy,
+            folder=str(self.folder_name),
         )
 
     def run(self):
@@ -622,7 +623,7 @@ class Experiment(CallbackNotifier):
         for other_group in self.group_map.keys():
             if other_group != group:
                 excluded_keys += [other_group, ("next", other_group)]
-        excluded_keys += ["info", (group, "info"), ("next", group, "info")]
+        # excluded_keys += ["info", (group, "info"), ("next", group, "info")]
         return excluded_keys
 
     def _optimizer_loop(self, group: str) -> TensorDictBase:
@@ -756,6 +757,6 @@ class Experiment(CallbackNotifier):
 
     def _load_experiment(self) -> Experiment:
         """Load trainer from checkpoint"""
-        loaded_dict: OrderedDict = torch.load(self.config.restore_file)
+        loaded_dict: OrderedDict = torch.load(self.config.restore_file, map_location=self.config.train_device)
         self.load_state_dict(loaded_dict)
         return self

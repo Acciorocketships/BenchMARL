@@ -139,7 +139,7 @@ class Model(TensorDictModuleBase, ABC):
             )
         if self.agent_group in self.output_spec.keys() and self.output_spec[
             self.agent_group
-        ].shape != (self.n_agents,):
+        ].shape[0] != self.n_agents:
             raise ValueError(
                 "If the agent group is in the output specs, its shape should be the number of agents"
             )

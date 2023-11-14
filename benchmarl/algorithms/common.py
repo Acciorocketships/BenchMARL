@@ -48,6 +48,7 @@ class Algorithm(ABC):
         self.observation_spec = experiment.observation_spec
         self.action_spec = experiment.action_spec
         self.state_spec = experiment.state_spec
+        self.info_spec = experiment.info_spec
         self.action_mask_spec = experiment.action_mask_spec
 
         # Cached values that will be instantiated only once and then remain fixed

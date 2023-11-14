@@ -238,6 +238,17 @@ class Task(Enum):
         """
         return RewardSum(reset_keys=env.reset_keys)
 
+
+    def custom_transforms(self, env: EnvBase) -> List[Transform]:
+        """
+        Returns the RewardSum transform for the environment
+
+        Args:
+            env (EnvBase): An environment created via self.get_env_fun
+        """
+        return []
+
+
     def __repr__(self):
         cls_name = self.__class__.__name__
         return f"{cls_name}.{self.name}: (config={self.config})"

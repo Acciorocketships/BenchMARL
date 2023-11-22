@@ -645,9 +645,12 @@ class Experiment(CallbackNotifier):
                     f"grad_norm_{loss_name}",
                     torch.tensor(grad_norm, device=self.config.train_device),
                 )
-
+        for loss_name, loss_value in loss_vals.items():
+            if loss_name in self.optimizers[group].keys():
+                optimizer = self.optimizers[group][loss_name]
                 optimizer.step()
                 optimizer.zero_grad()
+
         self.replay_buffers[group].update_tensordict_priority(subdata)
         if self.target_updaters[group] is not None:
             self.target_updaters[group].step()
@@ -676,6 +679,7 @@ class Experiment(CallbackNotifier):
     def _evaluation_loop(self):
         evaluation_start = time.time()
         with set_exploration_type(ExplorationType.MODE):
+        # with set_exploration_type(ExplorationType.RANDOM):
             if self.task.has_render(self.test_env) and self.config.render:
                 video_frames = []
 

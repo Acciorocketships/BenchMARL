@@ -50,6 +50,7 @@ from .vmas.simple_world_comm import TaskConfig as VmasSimpleWorldComm
 from .vmas.transport import TaskConfig as TransportConfig
 from .vmas.wheel import TaskConfig as WheelConfig
 from .vmas.wind_flocking import TaskConfig as WindFlockingConfig
+from .vmas.football import TaskConfig as FootballConfig
 
 
 # This is a registry mapping task config schemas names to their python dataclass
@@ -57,6 +58,7 @@ from .vmas.wind_flocking import TaskConfig as WindFlockingConfig
 # You will see the "envname_taskname_config" strings in the hydra defaults at the top of yaml files.
 # This feature is optional.
 _task_class_registry = {
+    "vmas_football_config": FootballConfig,
     "vmas_balance_config": BalanceConfig,
     "vmas_sampling_config": SamplingConfig,
     "vmas_navigation_config": NavigationConfig,

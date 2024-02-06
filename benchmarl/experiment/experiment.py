@@ -56,6 +56,8 @@ class ExperimentConfig:
 
     gamma: float = MISSING
     lr: float = MISSING
+    lr_start: float = MISSING
+    lr_iters: int = MISSING
     adam_eps: float = MISSING
     clip_grad_norm: bool = MISSING
     clip_grad_val: Optional[float] = MISSING
@@ -223,7 +225,7 @@ class ExperimentConfig:
             on_policy (bool): is the algorithms on_policy
         """
         return (
-            (self.get_max_n_frames(on_policy) // 3)
+            (self.get_max_n_frames(on_policy))
             if self.exploration_anneal_frames is None
             else self.exploration_anneal_frames
         )
@@ -428,9 +430,22 @@ class Experiment(CallbackNotifier):
         }
         self.optimizers = {
             group: {
-                loss_name: torch.optim.Adam(
-                    params, lr=self.config.lr, eps=self.config.adam_eps
-                )
+                loss_name:
+                    torch.optim.Adam(params, lr=self.config.lr, eps=self.config.adam_eps)
+                for loss_name, params in self.algorithm.get_parameters(group).items()
+            }
+            for group in self.group_map.keys()
+        }
+        self.schedulers = {
+            group: {
+                loss_name:
+                    torch.optim.lr_scheduler.LinearLR(
+                        self.optimizers[group][loss_name],
+                        start_factor=self.config.lr_start / self.config.lr,
+                        end_factor=1.0,
+                        total_iters=self.config.lr_iters,
+                    )
+                    if self.config.lr_iters != 0 else None
                 for loss_name, params in self.algorithm.get_parameters(group).items()
             }
             for group in self.group_map.keys()
@@ -565,6 +580,10 @@ class Experiment(CallbackNotifier):
                         // self.config.train_minibatch_size(self.on_policy)
                     ):
                         training_tds.append(self._optimizer_loop(group))
+                for loss_name in self.schedulers[group].keys():
+                    if self.schedulers[group][loss_name] is not None:
+                        self.logger.log({f"{group}/{loss_name}/lr": self.schedulers[group][loss_name].get_last_lr()[0]})
+                        self.schedulers[group][loss_name].step()
                 training_td = torch.stack(training_tds)
                 self.logger.log_training(
                     group, training_td, step=self.n_iters_performed

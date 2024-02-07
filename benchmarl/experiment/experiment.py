@@ -96,7 +96,7 @@ class ExperimentConfig:
 
     save_folder: Optional[str] = MISSING
     restore_file: Optional[str] = MISSING
-    checkpoint_interval: float = MISSING
+    checkpoint_interval: int = MISSING
 
     def train_batch_size(self, on_policy: bool) -> int:
         """
@@ -262,24 +262,6 @@ class ExperimentConfig:
             on_policy (bool): is the algorithms on_policy
 
         """
-        if (
-            self.evaluation
-            and self.evaluation_interval % self.collected_frames_per_batch(on_policy)
-            != 0
-        ):
-            raise ValueError(
-                f"evaluation_interval ({self.evaluation_interval}) "
-                f"is not a multiple of the collected_frames_per_batch ({self.collected_frames_per_batch(on_policy)})"
-            )
-        if (
-            self.checkpoint_interval != 0
-            and self.checkpoint_interval % self.collected_frames_per_batch(on_policy)
-            != 0
-        ):
-            raise ValueError(
-                f"checkpoint_interval ({self.checkpoint_interval}) "
-                f"is not a multiple of the collected_frames_per_batch ({self.collected_frames_per_batch(on_policy)})"
-            )
         if self.max_n_frames is None and self.max_n_iters is None:
             raise ValueError("n_iters and total_frames are both not set")
 
@@ -573,6 +555,9 @@ class Experiment(CallbackNotifier):
                 group_batch = group_batch.reshape(-1)
                 self.replay_buffers[group].extend(group_batch)
 
+                if self.total_frames < self.config.off_policy_init_random_frames:
+                    continue
+
                 training_tds = []
                 for _ in range(self.config.n_optimizer_steps(self.on_policy)):
                     for _ in range(
@@ -623,19 +608,19 @@ class Experiment(CallbackNotifier):
             # Evaluation
             if (
                 self.config.evaluation
-                and (self.total_frames % self.config.evaluation_interval == 0)
+                and (self.n_iters_performed % self.config.evaluation_interval == 0)
                 and (len(self.config.loggers) or self.config.create_json)
             ):
                 self._evaluation_loop()
 
             # End of step
-            self.n_iters_performed += 1
             self.logger.commit()
             if (
                 self.config.checkpoint_interval > 0
-                and self.total_frames % self.config.checkpoint_interval == 0
+                and self.n_iters_performed % self.config.checkpoint_interval == 0
             ):
                 self._save_experiment()
+            self.n_iters_performed += 1
             pbar.update()
             sampling_start = time.time()
 

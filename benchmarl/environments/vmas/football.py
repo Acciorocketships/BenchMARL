@@ -22,3 +22,5 @@ class TaskConfig:
     enable_shooting: bool = MISSING
     ball_max_speed: float = MISSING
     u_shoot_multiplier: float = MISSING
+    pos_shaping_factor_agent_ball: float = MISSING
+    pos_shaping_factor_ball_goal: float = MISSING
